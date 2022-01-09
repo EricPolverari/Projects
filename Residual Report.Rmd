@@ -1,0 +1,158 @@
+---
+title: "Residual Report"
+author: "Eric Polverari, RJ Leon, Matthew DiLeonardo & Cristian Hendricks"
+date: "4/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+## read in excel file
+library(readxl)
+
+statcastresidual <- read_excel("statcast3.xls")
+
+## library
+library(car)
+
+library(olsrr)
+
+# new variable to store statcast data
+statcast3 <- read_excel("statcast3.xls")
+
+
+## "best" model code
+```
+```{r}
+model91 <- lm (woba ~ I(isolated_power^2) + sprint_speed + b_hit_line_drive + isolated_power 
+               + popups_percent + straightaway_percent + in_zone_swing, data = statcast3)
+summary(model91)
+```
+
+# Best Model
+
+The "best" model our group has found so far includes the variables sprint speed (the velocity a player generates when running from home base to first base in the STATCAST tracking data), line drive (a powerfully hit ball that travels in the air and relatively close to and parallel with the ground.), isolated power (measures the raw power of a hitter by taking only extra-base hits -- and the type of extra-base hit -- into account.), popups percent (total number of weakly hit balls divided by total number of batting attempts), straightaway percent (percent of the time a batter hits the ball towards centerfield), in zone swing (number of times a batter swings at a pitch located in the strike zone), as well as a quadratic term for isolated power. 
+
+From our tests, we can see that each variable reports a significant p-value, the residual standard error shows that 95% of the values will fall between 2 standard errors, the adjusted R-squared shows a relatively high value of 0.7457 and we get a significant p-value < 2.2e-16 for the model.
+
+
+# Does out "best" model safisfy the assumptions of regression inference?
+
+To judge if our model satisfies the assumptions of regression inference, we'll begin with checking for any regression pitfalls. After deleting variables from the dataset that came back not estimable, we checked for evidence of multi-collinearity by running pairwise with correlation and scatterplot matrices. 
+
+```{r}
+
+## read in data from excel
+
+library(readxl)
+
+## new variable 
+statcast_cor_new <- read_excel("statcast cor new.xls")
+
+
+## correlation matrices
+
+cor(statcast_cor_new)
+
+## scatterplot matrices
+
+plot(statcast_cor_new)
+```
+
+
+Looking at the pairwise with correlation matrices, we can see that no two variables share any potential collinearity. 
+
+From our plot matrices, we get a lot of blobby looking plots, which indicates there's not much, if any, correlation between any two variables.
+
+Next, we'll calculate VIF scores to furthur check for multi-collinearity,
+
+```{r}
+
+# regression to get first order terms that need to be checked for collinearity
+model90 <- lm (woba ~  sprint_speed + b_hit_line_drive + isolated_power 
+               + popups_percent + straightaway_percent + in_zone_swing, data = statcast3)
+summary(model90)
+
+## library 
+
+library(car)
+
+## vif 
+
+vif(model90)
+```
+
+The above VIF scores are all significantly less than our arbitrary cutoff point of 10.
+
+After looking at matrices and VIF scores to check for multi-collinearity, we have found no evidence to suggest multi-collinearity exist in our model. Thus, we'll proceed to check the residuals for our "best" model.
+
+# Residuals
+
+```{r}
+
+# residual plots
+residualPlots(model91)
+
+```
+The residual plots show a pretty even distribution of values above and below the line, which is what we were hoping to see. Looking at the fitted values plotted against the residuals, we see the points roughly fit into a rectangular shape, indicating our model meets the homoscedasticity requirement.
+
+Now we want to check a boxplot to see if there's any reason to suggest non-linearity and a Q-Q plot to see if there's linearity.  
+
+```{r}
+
+## boxplot
+
+boxplot(model91$residuals, horizontal=TRUE)
+
+## library to get olsrr
+library(olsrr)
+
+## Q-Q Plot
+ols_plot_resid_qq(model91)
+```
+
+The boxplot doesn't show any signs of nonlinearity and the Q-Q Plot is showing a strong linear dataset. Both these graphics suggest that our model reasonably meets the normal residuals requirement.
+
+## Outliers, High Leverage & Influential points
+
+Next, we'll investigate any outliers, points with high leverage and influential points.
+
+```{r}
+
+## outliers
+ols_plot_resid_stud_fit(model91)$outliers
+
+```
+First, by looking at the studentized deleted residual plot, we'll notice some outliers, most notably point 11. However, the data points that are deemed outliers don't stray too far away from the rest of the points, so we feel confident that it won't significantly affect our model and we can include it in our statistical analysis.
+
+Next, we'll look at the resid-leverage plot.
+
+```{r}
+
+## resid-leverage plot
+ols_plot_resid_lev(model91)
+```
+
+
+Our focus is in the upper right corner, where we see two points of interest (214 and 368) that are both an outlier & leverage point. However, these points aren't significantly far away from the rest of the dataset and we feel confident that they won't affect our model. 
+
+Lastly, we'll look at a Cooks D plot.
+
+```{r}
+
+## Cooks D plot
+ols_plot_cooksd_chart(model91)
+```
+
+Two data points stick out like a sore thumb (11 & 368). While these values appear to be quite different from the rest, they aren't having a heavy enough influence to remove from the dataset.
+
+To further investigate any problematic outliers or leverage points, we were able find the players that the values belonged to. Point 11 is for Minnesota Twins Outfielder Byron Buxton for the 2017 season. Considered one of the fastest players in baseball, Buxton's sprint score may explain why he has a higher wOBA than expected, as the formula in wOBA doesn't really take into account speed. Point 368 belongs to Catcher for the, at the time, Toronto Blue Jays, Russel Martin, for the year 2015. Martin has a reputation for having a good eye for the ball, so perhaps his ability to avoid popups and reluctance to swing too much makes him a player that is better than the traditional wOBA statistic suggests.
+
+Based on researching the values and critically thinking about how these player's values may not fit our dataset, we determined that there could be a reasonable explanation as to why the points are noticeably considered "off" from the rest of the data and since these values don't seem to be unexplainable or significantly different from the rest of the data, we decided to not remove them or any other data points. 
+
+After doing a thorough investigation of residuals, we are confident that our model satisfies the assumptions of regression inference. Therefore, we will consider this our "best" model.
+
+# Conclusion
+
+In order to process our model refining, we needed skills that we learned from lower-division classes, such as Intro to Philosophy: Critical Thinking. Without sharp critical thinking skills, we could have easily gone down the wrong path in regards to which variables to choose and may not have been able to avoid regression pitfalls, which would be easy to do without a refined skillset of logical reasoning. It was also crucial for all of us to have had basic coursework in Statistics, mainly from Math 165 and 265, which gave us a great foundation to help us with this process. As residuals and outliers are covered in both classes, we felt like we had a really good sense of how to interpret outliers or influential plots, especially visually, as we spent a good deal of time examining different plots, graphs and statistical tests in our beginner Statistics courses. Without that foundation, it would've been easy for us to blindly follow the residual test that showed us our outliers and remove them from the data, but since we've sharpened our tools of Statistical learning, we were able to properly asses whether the data points were actually problematic or not. To creatively build our "best" model, it was imperative for us to start from the ground up before applying more complex rules and techniques to our model. It took a combination of years of experience and important classes that shaped our ability to find our "best" model. 
+
