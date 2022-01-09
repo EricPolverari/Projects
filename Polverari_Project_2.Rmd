@@ -1,0 +1,142 @@
+---
+title: "Project 2"
+author: "Eric Polverari"
+date: "11/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Question 1
+
+To determine if one of our grocery chains, WinCo or Walmart, tends to have prices that are higher than the other, we'll look at a statistical analysis of the data of both stores. 
+
+First, let's compare some basic summary statistics. The median prices for grocery staples found at WinCo is roughly $1.68, the mean price is approximatley $2.48 and the standard deviation is $2.50. The median prices for grocery staples at Walmart is around $1.77, the mean is roughly $2.66, and the standard deviation is $2.56. Generally speaking, the prices don't appear to differentiate a significant amount between the two stores, but we do see that prices at Walmart are higher in this sample. 
+
+```{r}
+# read in data
+grocery_prices2 <- read.csv("grocery_prices2.csv",header=TRUE)
+
+#compare summary statistics
+par(mfrow=c(1,2))
+summary(grocery_prices2$WinCo)
+summary(grocery_prices2$Wal.Mart)
+
+sd(grocery_prices2$WinCo)
+sd(grocery_prices2$Wal.Mart)
+
+
+
+
+```
+
+To get a better picture of the data, we'll look at the differences between the two stores, subtracting WinCo prices from Wal-Mart prices. Below, we have a scatterplot showing the relationship between the prices of items for both stores. We see a positive, linear relationship, but we don't seem to observe a significant difference in prices between the stores. The correlation is 0.9904264, confirming what our scatterplot showed, which is a very strong, near perfect positive relationship between the two stores prices of items. The boxplot of differences shows a right-skew of the data, with the median around 0.1. 
+
+While these preliminary statistics and visuals gives us some insight to the differences, we now want to focus our attention to perform an inferential analysis to address the key question: Do the data suggest that prices tend to be higher at one of the chains?
+
+
+
+
+```{r}
+
+#difference between the prices
+diff_gp2 <- (grocery_prices2$Wal.Mart - grocery_prices2$WinCo)
+
+#plot the prices
+plot(grocery_prices2$WinCo, grocery_prices2$Wal.Mart)
+cor(grocery_prices2$WinCo, grocery_prices2$Wal.Mart)
+
+#boxplot of differences
+boxplot(diff_gp2)
+
+#
+summary(diff_gp2)
+```
+
+To answer this question, we'll use the differences between the prices of the two stores and perform a confidence interval and t test. The confidence level is 99% and the t-test has an alpha of 0.05. 
+
+
+```{r}
+t.test(diff_gp2, conf.level = 0.99, var.equal = TRUE, alternative = 'two.sided')
+```
+
+I am 99% confident that the true difference in prices between is between $0.0026 less and $0.36 more for Walmart than WinCo.
+
+$H_0: \mu_1-\mu_2 = 0; H_A: \mu_1 - \mu_2 \neq 0.$ $\alpha=0.01$.
+
+Our t-test shows a test statistic of 2.7233 and a p-value of 0.011. Our p-value is greater than our alpha 0.01, so we do not reject the null hypotheses. Thus, the data does not provide strong evidence that the prices tend to be higher at one of the chains.
+
+To assess whether our modeling assumptions our reasonable, let's examine a normal quantile plot of the differences. 
+
+```{r}
+qqnorm(diff_gp2, main = 'Differences in WalMart vs WinCo Prices')
+qqline(diff_gp2, col = 'purple')
+```
+
+Our plot shows an approximately normal plot. We should feel confident that our model is reasonable to draw conclusions from.
+
+Based on the confidence interval and t test, we were able to conclude that there was no significant difference between the prices in the two stores. However, our interval was close to not containing zero and our p-value was quite small, so while our results didn't conclude a significant difference, others might consider this data did show a significant difference in prices. 
+
+We should have concerns about how well this represents our well-defined population. We are only looking at data from one date in January 2016 and from one WinCo store and one Walmart store in the Phoenix metropolitan area. Since the consumer research group wanted to investigate if one chain is systemically less expensive than the other, we would ideally want the data to involve more stores from different states and at different times of the years, as we may see significantly different results among different populations and times of the years. 
+
+## Question 2
+
+In order to evaluate the experimental study conducted in an effort to assess whether internet usage leads people to overestimate their knowledge, we can begin by doing a preliminary statistical analysis. 
+
+First, we'll look at some summary statistics. Below, we can see mean, median, and standard deviation for the self-assessment scores of groups A and B. For Group A, the mean is 3.96 , the median is 4 and the standard deviation is 1.695091. For Group B, the mean is 5.26087, the median is 6 and the standard deviation is 1.601630. We see a pretty stark contrast between the two groups, with Group B's average self-assessment rating dwarfing Group A's rating. 
+
+```{r}
+# read in data
+self_assessment <- read.csv("self_assessment.csv",header=TRUE)
+
+self_assessment$Group <- as.factor(self_assessment$Group)
+```
+
+
+```{r}
+summary(subset(self_assessment,Group=='A')$Rating)
+summary(subset(self_assessment,Group=='B')$Rating)
+tapply(self_assessment$Rating,self_assessment$Group,sd)
+```
+
+
+
+Let's now examine a boxplot between the two groups. For Group A, we see what appears to be an approximately normal shape with tails that extend from as low as one and as high as seven. The boxplot for Group B shows a skewed left distribution, with a few outliers. These results reflect what we saw from the summary statistics: Group B has what appears to be a significantly higher self-assessment rating average than Group A. 
+
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(Rating~Group, data=self_assessment, main = "Self-Assessment Ratings")
+```
+
+In order to answer the ultimate question of whether, on average, the participants who used internet in the induction phase tended to report a higher confidence in their "self-assessment" phase answer, we can do an inferential analysis on the data. 
+
+I performed a 95% confidence interval and a two-sample t-test on the data. The results are reported below.
+
+```{r}
+t.test(self_assessment$Rating ~ self_assessment$Group, conf.level = .95, var.equal = FALSE)
+```
+
+I am 95% confident that Group B's mean self-assessment rating is between 0.34 and 2.26 points higher than Group A's mean self-assessment rating.
+
+$H_0: \mu_1-\mu_2 = 0; H_A: \mu_1 - \mu_2 \neq 0.$  Use $\alpha=0.05$.
+
+For the t-test, the results show a test statistic of -2.7336 and a p-value of 0.008865. The p-value is less than our alpha of 0.05, so we reject the null hypothesis. Thus, the data suggests that we have strong evidence to conclude that, on average, the participants who used internet in the induction phase tend to report a higher confidence in their "self-assessment" phase answers. 
+
+Now, let's check to see if our modeling assumptions are resonable. First, let's look at a quantile plot between both groups.
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(subset(self_assessment,Group=='A')$Rating, main = 'Group A')
+qqline(subset(self_assessment,Group=='A')$Rating, col = 'orange')
+
+qqnorm(subset(self_assessment,Group=='B')$Rating, main = 'Group B')
+qqline(subset(self_assessment,Group=='B')$Rating, col = 'purple')
+```
+
+The quantile plot looks approximately normal for Group A, however Group B doesn't look to be approximately normal. Perhaps, we should proceed with caution before arriving at a conclusion. 
+
+When evaluating the data for this experimental study, we should be careful when performing a statistical analysis and inferential methods. The methods for collecting this data involves measurements from a Likert scale, which isn't inherently a numeric measurement, as it confines its participants to an ordinal ratings system, a non-numeric measurement. While this could be normal, attempting to perform statistical techniques on questionable data may yield imprecise results that doesn't accurately represent whether internet usage leads people to overestimate their knowledge. 
+

@@ -1,0 +1,229 @@
+---
+title: "Final Mini Project"
+author: "Eric Polverari"
+date: "12/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## Question One
+
+## Descriptive Summary
+
+  In this analysis, using the data collected by an agricultural research team in Idaho for the 2012 growing season, we will investigate whether the Fuji apple trees' branch configuration had an effect on the fruit produced by the trees. First, we examine some descriptive statistics and visuals, then apply inferential procedures to the data. Finally, we'll give a conclusion about the results.
+
+  Let's start by comparing the means and standard deviation of the weight per apple (in grams) to see if there's any obvious differences between the three trees' branch configuration average weight per apple. The mean weight per apples by the treatment "overlapped arm" is 181.79 grams and has a standard deviation of 28.23. The second treatment, "tall spindle", has the mean weight per apple as 276.73 grams with a standard deviation of 65.53. For the treatment "tipped arm", the mean weight per apples is 239.98 grams and a standard deviation of 41.52. We notice there's what appears to be a significant difference in the mean weight per apples between the three treatments, with the overlapped arm treatment having the lightest mean weight per apple and the tall spindle treatment having the heaviest. We also see there's more spread for the tall spindle group compared to the other two groups. Next, we'll visualize some of the data to try and gain more insight about these differences. 
+
+```{r}
+fuji_apples <- read.csv("fuji_apples.csv")
+
+fuji_apples$treatment <- as.factor(fuji_apples$treatment)
+```
+
+```{r}
+group_means_apples <- tapply(fuji_apples$weight.per.fruit, fuji_apples$treatment, mean)
+group_sds_apples <- tapply(fuji_apples$weight.per.fruit, fuji_apples$treatment, sd)
+
+group_means_apples
+group_sds_apples
+```
+
+Below, we have a boxplot for each treatment type: overlapped_arm, tall_spindle, and tipped_arm. Clearly, we can see that the median for the weight per apples of the tree with the tall spindle treatment looks to be significantly higher than both the tipped arm and overlapped arm treatment. While this boxplot and the above summary statistics may indicate a significant difference between the average weight per apple given the type of tree branch treatment, we want to use an inferential method to accurately answer our key question: Do the data suggest that the branch configuration affects the fruit weights?
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(weight.per.fruit ~ treatment, data=fuji_apples, names = c("overlapped_arm", "tall_spindle", "tipped_arm"), xlab="Treatment", ylab=" Mean Weight Per Apple", main = "Apples Weight")
+```
+
+## Inferential Analysis
+
+  Because our data involves a numeric variable (average weight per apple) and a categorical variable (treatment types), we performed a one-way ANOVA test to determine if branch configuration affects the fruit weights. For this test, our null hypothesis is that there's no difference between the average weight per apple given the treatment type and our alternative hypothesis is that not all of the means are equal. We used an alpha of 0.05. The test returned a test statistic of 8.0712 and a p-value of 0.00251, meaning we reject the null hypothesis. The data provides strong evidence that the mean weight per apple differs across the three apple trees' branch configuration. To find the degree to which the mean weight per apple significantly differs between the trees' branch configuration, we can apply Tukey's method for pairwise comparison. From this method, we see that difference between the tall spindle and overlapped arm treatments shows a statistically significant difference, with a confidence interval that implies we are 95% confident that the average mean weight per apples for the tall spindle treatment is between 34.87 and 155 grams more than the mean weight per apples for the overlapped arm treatment.  
+
+```{r}
+lm_apples <- lm(weight.per.fruit ~ treatment,data=fuji_apples)
+anova_apples <- anova(lm_apples)
+anova_apples
+
+```
+
+```{r}
+lm_apples_pairwise_comparisons <- TukeyHSD(aov(lm_apples))
+lm_apples_pairwise_comparisons
+```
+
+## Assumptions of the Statisitcal Model
+
+  Before we wrap up, it's imperative that we check our model assumptions for this analysis. Below, we see two different visuals: a plot of the residuals by the treatment group and a normal quantile plot. The plot of residuals by group shows that the residuals are fairly centered around zero, but variability between the groups appears to differ in a significant manner, as we see the spread of the tall spindle residuals appears to show higher variability compared to the overlapped arm and tipped arm residuals. The normal quantile plot has some questionable data points and perhaps a couple outliers, but nothing that seems overly concerning, so we can probably consider this approximately normal. While the assumption of normality is satisfied, the assumption of equal variances appears to be slightly violated. We may want to proceed with caution when using this model when answering any questions with this data.    
+
+
+
+```{r}
+apples_residuals <- residuals(lm_apples)
+stripchart(apples_residuals~fuji_apples$treatment, vertical=TRUE,
+           main='residuals by group - treatment',
+           ylab='residuals')
+qqnorm(apples_residuals)
+qqline(apples_residuals,col='purple')
+
+```
+
+## Conclusion
+
+Based on this statistical analysis, we found that the data does suggest that the branch configuration affects the fruit weights. The treatment "tall spindle" had a statistically higher mean weight per apple than that of the treatment "overlapped arm". While these are promising results, we do want to caution that our sample size of 24 isn't large and our data is only from the 2012 growing season and appears to be only conducted in Idaho. Perhaps other factors like weather, soil, location and time of the year may have had an effect on the fruit weight and we may want to do a more extensive study to factor in these potential variables. 
+
+
+
+## Question Two
+
+## Introduction
+
+  In this study, we analyzed data that was gathered from end of semester student evaluations for a large sample of professors from the University of Texas at Austin. The following statistical analysis is to answer the question: What factors beside the appearance-related variables are associated with score? In order to determine this, we selected three variables to perform an analysis on to see which, if any, had an association with the student evaluation score. Below, we examined three variables separately to determine if they were associated with the variable score. In order, we used the variables gender (gender of professor),rank(rank of professor) and age (age of professor). We'll wrap up with a conclusion to answer our key question. 
+ 
+
+## Descriptive Summary: Gender
+
+  Perhaps the gender of a professor would affect the score they received. To evaluate this, let's start with a boxplot comparing the scores across gender. Below, we see a boxplot of each score given the gender of the professor. We see that the median for male score is higher than that for female score. There does appear to be a bit more spread for the female score while there are a couple more outliers for the male boxplot. We also calculated some summary statistics to gain some more insight. The mean score for female professors is 4.09 and the standard deviation is 0.56. The mean score for male professors is 4.23 and the standard deviation is 0.52. This reflects what we learned from our boxplots, that there's more spread for the females score while the scores for males is larger than that of females. To determine if there's a statisitcally significant difference, we'll perform an inferential method.  
+
+```{r}
+evals <- read.csv("evals.csv")
+evals$gender <- as.factor(evals$gender)
+```
+
+
+```{r}
+boxplot(score~gender, data=evals)
+```
+
+
+```{r}
+gender_group_means <- tapply(evals$score, evals$gender, mean)
+gender_group_sds <- tapply(evals$score, evals$gender, sd)
+
+gender_group_means
+gender_group_sds
+```
+
+## Inferential Analysis: Gender
+
+Since we are dealing with a numeric variable and a binary variable, we used the inferential procedure t test to determine if there's a statistically significant difference between the two means. Our null hypothesis is that there's no difference in mean scores for female and male professors and our alternative hypothesis is that there is a difference in mean score for female and male professors. Even though the standard deviation is higher for female than male, we used the test with variance as equal, as we don't believe that there would be unequal variances given gender. We used an alpha of 0.05 and our test found a test statistic -2.7844 and a p-value of 0.005583, so we reject our null hypothesis. We have data that provides strong evidence that there is a difference in mean score for female and male professors. 
+
+
+```{r}
+t.test(evals$score ~ evals$gender, var.equal=TRUE)
+```
+
+## Model Assumptions: Gender
+
+Now, we'll check assumptions for our model. Below, we plotted normal quantile plots for both female and male scores. Both plots show an approximately normal shape with no clear outliers, so we can say our assumption of normality is satisfied. 
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(subset(evals, gender=='female')$score,
+       main='female', col='orange')
+
+
+qqnorm(subset(evals, gender=='male')$score,
+       main='male', col='purple')
+```
+
+## Descriptive Summary: Rank
+
+Is the ranking of a professor associated with score? Let's start by examining the mean and standard deviations of score across the three difference groups (teaching, tenure track, tenured). The mean score for professors with a teaching rank is 4.28 and a standard deviation of 0.498. For professors with a rank of tenure track, the mean score is 4.15 and a standard deviation of 0.56. Finally, the mean score for professors with a teaching rank of tenured is 4.14 and a standard deviation of 0.55. This may seem surprising, as one may assume that teachers with a more tenure would normally be regarded as better professors, but we actually see the reverse happening, with the lowest rank (teaching) having the highest mean score and the highest rank (tenured) having the lowest mean score. The standard deviation across all the ranks are roughly in line with one another and relatively small, suggesting not much variability. When we look at boxplots for the scores across the ranks, we see that the median for teaching rank is slightly higher than that for tenure track and higher than that of the tenured rank. We do see one outlier in the tenure track and a couple for tenured, perhaps something we should furthur invesitgate.   
+
+```{r}
+group_means <- tapply(evals$score, evals$rank, mean)
+group_sds <- tapply(evals$score, evals$rank, sd)
+
+group_means
+group_sds
+```
+
+```{r}
+boxplot(score~rank, data=evals)
+```
+
+
+## Inferential Analysis: Rank
+
+Even though we saw that the mean score for teaching was larger than that for tenure track and tenured, we want to use an inferential procedue to find statistical significance. Since we are dealing with a numeric variable and categorical grouping variables, we performed a one-way ANOVA test. The null hypothesis is that there's no difference between the three means. The alternative hypothesis is that there is at least one difference between the three means. We use an alpha of 0.05. The test statistic is 2.7061 and the p-value is 0.06786. Since our p-value is greater than our alpha of 0.05, we do not reject the null hypothesis. We conclude that the data does not provide strong evidence that there is at least one difference between the three means. 
+
+
+```{r}
+lm_rank <- lm(score~rank,data=evals)
+
+
+anova_rank <- anova(lm_rank)
+
+anova_rank
+```
+
+## Model Assumptions: Rank
+
+Let's circle back and check our model assumptions. To assess the normality assumption, we made a normal quantile plot. This plot does show generally most of the data follows a straight-line pattern, but we do have a concerning amount of points that seem to greatly deviate away from the straight-line pattern, perhaps violating our normality assumption. To assess the equal variances assumption, we plotted the residuals by group. We see the residuals are roughly centered around zero and the variability does seem to be roughly equal. Therefore, our equal variances assumption is satisfied.   
+
+
+```{r}
+rank_residuals <- residuals(lm_rank)
+
+qqnorm(rank_residuals)
+qqline(rank_residuals,col='magenta')
+
+
+stripchart(rank_residuals~evals$rank, vertical=TRUE,
+           main='residuals by group - evals data',
+           ylab='residuals')
+
+```
+
+## Descriptive Analysis: Age
+
+Could age be associated with score? Below, we plotted the age as our indepdent variable and score as our dependent variable. We see a non-linear pattern, probably implying a weak relationship. Since we have a non-linear pattern, we opt to calculate the spearman correlation, which returns a value of -0.1015, signifying that we have a weak, negative relationship between age and score. Even after applying transformations, such as log and sqaure root, we only notice a small change in the correlation, so we proceeded to treat this data without transformations.
+
+
+
+```{r}
+plot(evals$age, evals$score, xlab='Age', ylab='Score')
+cor(evals$age, evals$score, method='spearman')
+
+```
+
+## Inferential Analysis: Age
+
+Since we are dealing with two numeric variables, we performed a simple linear regression and chose the inferential procedure of a hypothesis test for the regression coefficient slope. The null hypothesis is that B1 equals zero and the alternative is the B1 is not equal to zero. The alpha level is 0.05. From our results below, we see that the regression line is: score = 4.4619 - 0.006(age), which means for every one year increase in age, the score will decrease by roughly 0.002 units. The summary table shows the test statistic for B1 equals -2.379 and the p-value for B1 equals 0.0178, which is less than the alpha of 0.05, therefore we reject the null hypothesis. We conclude that the data provides strong evidence that B1 is not equal to zero. 
+
+
+```{r}
+lm_age <- lm(score~age,data=evals)
+
+summary(lm_age)
+```
+
+## Model Assumptions: Age
+
+Let's perform a residual analysis to check our model assumptions. To assess equality of variances and linearity, we have a residual plots of our predictor variable against residuals. We do see notice there seems to be more variance underneath the line than over it, perhaps indicating there's a violation of the assumption of equality of variances and linearity. To assess normality, we can see the normal quantile plot below. Even though it seems most points follow a 45 degree line, we do see a concerning amount that drift significantly away from the line. We probably wouldn't assume normality in this case. 
+
+
+```{r}
+age_resid <- residuals(lm_age)
+age_fitted <- fitted(lm_age)
+
+
+plot(evals$age,age_resid , main='x vs residuals',
+     xlab='age',ylab='residuals', col='red')
+# add horizontal line at 0 
+abline(h=0)
+
+
+# normal quantile plot
+qqnorm(age_resid, col='orange')
+qqline(age_resid, col='blue')
+```
+
+
+## Conclusion
+
+After doing a statistical analysis examining each variable and their association with score, we found strong evidence that there are factors besides the appearance-related variables that are associated with score. From our inferential tests, we found that the non-appearance-related variables of gender and age are associated with score. We didn't have strong enough evidence to conclude that rank was associated with score, however we did have a small p-value that others could consider there's a statistical difference. Our analysis also shows that there is evidence that the evaluation scores measures might reflect the influence of non-teaching related characteristics, as we don't believe that one's gender or age is a teaching related characteritic, but are associated with evaluation scores. We do want to caution that, even though we found an association between age and scores through inferential methods, we notice a very small R-squared. Only about one percent of the varaition in test score is explained by age, so while we did find an association, it would probably not be wise to use this regression line to make any sort of predictions.  
