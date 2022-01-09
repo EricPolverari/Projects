@@ -1,0 +1,189 @@
+---
+title: "Prelim Written Report"
+author: "Eric Polverari"
+date: "4/16/2021"
+output: html_document
+---
+For our initial model to predict a player's wOBA from their statcast data, we learned that, while the model showed significance, not every variable showed significance and we had a larger issue of potential collinearity as each variable was not independent. So, to furthur investigate our question about what factors can be useful to predict a player's wOBA, we decided to use a built-in variable screening method, which was a step wise regression. From the website baseballsavant.com, we initially used every variable to see what the step wise regression would deem useful. However, after getting several non applicable variables, we decided to drop what wasn't applicable and then proceeded with the step wise regression. 
+```{r setup, include=FALSE}
+
+library(olsrr)
+library(readxl)
+
+statcast <- read_excel("statcast.xls")
+statcast1 <- read_excel("statcast1.xls")
+
+full.model <-lm (woba~ . , data=statcast1)
+summary(full.model) 
+
+reduced.model <-ols_step_both_p(full.model)
+reduced.model
+
+
+```
+
+Based on these results, we see that a statistic called "on base plus slug" is the most useful variable and actually shows a very high correlation with wOBA. However, we're more interested in determining which more isolated statistics can be predictive of a player's wOBA, as one base plug slug is a statistic that is very similar to wOBA, so it doesn't give us as useful information as we'd like. 
+
+Our first thought was maybe to see if we can build a model using all the variables that are actually calculated into wOBA, to see just how accurate it would be. 
+
+```{r}
+uBB = statcast$b_walk-statcast$b_intent_walk
+
+modelwOBA <-lm (woba~ uBB+ b_hit_by_pitch + b_single + b_double + b_triple + b_home_run + b_ab + b_walk + b_sac_fly , data=statcast)
+summary(modelwOBA)
+```
+Based on this result, it shows that, to no surprise, using all the statistics to calculate wOBA would return a very strong model, as with can see with a .98 adjusted R-squared and a p-value <2.2e-16. It was surprising to learn that the walk statistic didn't show significance, as walks have generally been regarded in the statistical community as an underrated value. 
+
+While we learned some valuable information, it really doesn't help answer the question we are most intrigued by, which is what different type of solo or rate statistics help predict a player's wOBA.After critically thinking about what the step wise regression gave us, we decided to start picking and choosing different variables to include in a first-order model. We opted to eliminate stats like the aforementioned on base plug slugging percentage, but also left off other variables like on base percent, wobacon, bacon, and other statistics that had too much complexity in them and decided to choose variables like strikout percent, intentional walks, and other variables that were more simple and straightforward. 
+
+The first model we looked out used the three variables the step wise regression process deemed to be the best, not counting the variables to decided to not include, which was a model that used intentional walks, strikout percent and pitch count fastball. 
+```{r}
+model1 <-lm (woba~b_intent_walk+b_k_percent+pitch_count_fastball, data=statcast1)
+summary(model1)
+```
+
+While this model showed a statistical significant p-value, we see that is doesn't have a very promising adjusted R-squared of .2621 and the variable k percent has an individual t test value that is not lower than out standard significance level threshold of 0.05. This was basically the template we used to decide whether or not to include a variable or throw it out. 
+
+After this model we came up with several more, including what returned a significant individual t test value and excluding others that weren't statistically significant. What we found was that variables like pitch count fastball and barrel batted rate, would either be removed from the step wise regression or there were issues of colinarety with other variables. Ultimately, the first model we propose will be a first-order model, using the variables intentional walks, strikeout percent, number of barrels (the most well struck ball) hit and popups percent.  
+
+```{r}
+model1 <- lm (woba ~ b_intent_walk + b_k_percent + barrels + popups_percent, data = statcast1)
+summary(model1)
+```
+
+H0: B1 = B2 = B3 = B4 = 0.
+
+Ha: at least one is not equal to 0.
+
+With an F-statistic of 204.5 on 4 and 703 degrees of freedom, the model has a p-value<0.001. Since the p-value is less than alpha, 0.05, we reject the null hypothesis and determine that the overall model to predict wOBA from intentional walks, strikout percent, number of barrels hit and popup percent would be useful.
+
+The adjusted R-squared value for our first model is 0.5352 and has a residual standard error of 0.02318. We have a reasonable standard error, which we can see shows values fall between two standard deviations. Our adjusted R-squared says that 53.52% of a player's wOBA can be explained by a player's intentional walk number, strikeout percent, number of barrels hit and popups percent. When looking at each intercept, they intuitively all make sense, as we would expect a player's offensive performance to improve if they are drawing walks (i.e. not making an out) and if they're hitting the ball at the hardest level. We would also expect a player's wOBA to decrease if they strikeout a high percentage of the time, as outs are generally the worst outcome for a player, or if they hit a popup, which is regarded as one of the weakest hit results a player can have. 
+
+
+Based on this model, we wanted to see if we can add some interaction terms or quadratic terms to improve the model. First, we tried to interact terms that had the same positive or negative intercept, so we did a interaction term with intentional walk and barrels, as well as popups percent and strikout percent.
+
+
+```{r}
+model1.1 <- lm (woba ~ b_intent_walk * barrels + popups_percent * b_k_percent , data = statcast1)
+summary(model1.1)
+```
+H0: B1 = B2 = B3 = B4 = 0.
+
+Ha: at least one is not equal to 0.
+
+With an F-statistic of 140.3 on 6 and 701 degrees of freedom, the model has a p-value<0.001. Since the p-value is less than alpha, 0.05, we reject the null hypothesis and determine that the overall model is useful.
+
+Our adjusted R-squared is .5417, only a slight improvement over the first-order model. The residual standard error of .02302 is slightly lower than the first-order model residual standard error.  
+
+However, we want to know if the interaction terms added significance to the first order model, so we ran an ANOVA test. 
+```{r}
+anova(model1, model1.1)
+```
+H0: B5=B6=0
+Ha: at least one is not zero.
+
+F statistic: 6.0175
+
+P-value: 0.003
+
+Since the p-value is less than our significance level of 0.05, we reject the null hypothesis and conclude that the model with interaction terms added is more useful than a first-order model.
+
+This is the second model we propose to use. 
+
+Since we had a large dataset and some variables didn't seem of importance to us, we decided to remove several to maybe see if the step wise regression would come up with different results. After carefully examining our data, we excluded 21 variables and settled on a dataset with 82 variables and ran the step wise regression once more. 
+
+
+```{r}
+
+library(olsrr)
+library(readxl)
+
+statcast2 <- read_excel("statcast2.xls")
+
+
+full.model <-lm (woba~ . , data=statcast2)
+summary(full.model) 
+
+reduced.model <-ols_step_both_p(full.model)
+reduced.model
+```
+As we see from the results, we do get a pretty drastic difference in what variables are chosen. From this dataset, we looked at several different models. Even though we wanted to see variables like single and double included, we felt like these stats were a bit too basic and also included in the original calculation of wOBA, so we excluded those. What we settled on were using variables we were mostly interested in, like isolated power, poorly under percent and  pull percent, as these stats were pretty unique and not really cited in predicting a player's offensive performance. Isolated power is the difference between a player's slugging percentage and batting average, so it tells us how much power the player is hitting for. Poorly under percent was used in our model in our presentation, which is just a poorly hit ball. The pull percent refers to a player that pulls the ball. An example of a player pulling the ball is when a right-handed batter hits the ball to the left side of the field, from the batter's perspective. We would expect the intercept for pulling the ball to be positive, as the ball is covering the least amount of ground in the field, as opposed to hitting it across the field, which would require more velocity to hitter it better and furthur. 
+
+```{r}
+model2 <-lm (woba~isolated_power + poorlyunder_percent + pull_percent, data=statcast2)
+summary(model2)
+```
+H0: B1 = B2 = B3 = 0.
+
+Ha: at least one is not equal to 0.
+
+With an F-statistic of 410.8 on 3 and 704 degrees of freedom, the model has a p-value<2.2e-16. Since the p-value is less than alpha, 0.05, we reject the null hypothesis and determine that the model to predict a player's wOBA based on the variables isolated power, poorly under percent and pull percent is useful. 
+
+Our adjusted R-squared is .6349, which says that about 63% of player's wOBA is explained by their isolated power, poorly under percent and pull percent. The residual standard error is small and shows that the values fall between two standard deviations. 
+
+It's not surprising that isolated power has a positive intercept and poorly under contact has a negative intercept, but it's notable that pull percent has a negative intercept. Perhaps pulling the ball results in a more poorly struck ball that what we would think would actually be a well hit ball. 
+
+Now, we want to see if any interaction or quadratic terms can be added that improves the model. We'll start by examining a scatterplot based on each response variable to wOBA.
+
+```{r}
+
+with(statcast2, plot(woba~isolated_power, pch = 20))
+grid()
+
+with(statcast2, plot(woba~poorlyunder_percent, pch = 20))
+grid()
+
+with(statcast2, plot(woba~pull_percent, pch = 20))
+grid()
+
+```
+
+As we can see from the model, we get what we sort of expect. Isolated power shows a show positive relationship to wOBA, while pull poorly under percent shows a somewhat moderate negative relationship and pull percent is more scattered about. As we're not seeing any clear curvature in these plots, we looked at interaction terms. 
+
+Despite pull percent and poorly under percent seemingly like a good interaction, they didn't show a significant improvement over the first-order model. 
+
+```{r}
+model2.1 <-lm (woba~isolated_power + pull_percent * poorlyunder_percent   , data=statcast2)
+summary(model2.1)
+```
+
+```{r}
+anova(model2, model2.1)
+```
+
+However, despite not being intuitive, we decided to see if isoalted power interacted with poorly under percent or pull percent. 
+
+```{r}
+model2.2 <-lm (woba~isolated_power * poorlyunder_percent + pull_percent   , data=statcast2)
+summary(model2.2)
+```
+H0: B1 = B2 = B3 = B4 = 0.
+
+Ha: at least one is not equal to 0.
+
+With an F-statistic of 310.5 on 4 and 703 degrees of freedom, the model has a p-value<2.2e-16. Since the p-value is less than alpha, 0.05, we reject the null hypothesis and determine that the model to predict a player's wOBA based on the variables isolated power, poorly under percent, pull percent and the interaction between isolated power and poorly under percent is useful. 
+
+Our adjusted R-squared is .6365, which is only a slight improvement over the first-order model.  The residual standard error is smaller than the reduced model, though only slightly.
+
+If we perform an ANOVA test to determine whether the interaction term adds significant, we get the following result:
+
+```{r}
+anova(model2, model2.2)
+```
+
+H0: B4=0
+Ha: B4 is not zero.
+
+F statistic: 4.1276
+
+P-value: 0.04256
+
+Since the p-value is less than our significance level of 0.05, we reject the null hypothesis and conclude that the model with an interaction term added is more useful than the first-order model.
+
+This is the third model we propose. 
+
+From examining the three models we proposed, we think that the model we feel is the "best", would be the one using interaction terms between intentional walks and barrels and the interaction between strikeout percent and popups percent. We feel that since the ANOVA test comparing our first proposed model to the model with interaction terms revealed that the interaction terms added significance, so we can elimate the first order from consideration. While the second nested model also showed significance from its first model, we're skeptical that the interaction between the two variables that are opposite in values from each other is as strong as it's suggesting. However, the model that interacts the variable with matching positive or negative intercepts makes sense as it seems reasonable those variables interact with each other. 
+
+Based on our knowledge of the sport of baseball, we felt like we were able to conjecture which variables would make sense to include and to exclude. Even though there weren't any specific class that contributed to this, we felt that we gained valuable critical thinking skills in Introduction to Philosophy, which helped us reason which variables would be more important or less important than what the step wise regression would suggest. The step wise regression was very valuable to us, but being able to asses whether a varaible was important or not was a skill honed by years of general education. 
+
+
